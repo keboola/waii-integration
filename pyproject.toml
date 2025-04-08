@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "keboola.waii_testing"
+version = "0.1.0"
+authors = [
+    {name = "Keboola", email = "developers@keboola.com"},
+]
+description = "Keboola Integration with WAII"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["keboola", "waii", "semantic-context"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "waii-sdk-py>=1.28.2",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "kbcstorage>=1.4.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0.0",
+]
+
+[project.urls]
+Repository = "https://github.com/keboola/waii_testing"
+
+[project.optional-dependencies]
+dev = [
+    "build~=1.2",
+    "tox~=4.23",
+    "wheel~=0.45",
+    "click~=8.1",
+    "streamlit~=1.43.0",
+]
+
+waii = [
+    "waii-sdk-py~=1.28.2"
+]

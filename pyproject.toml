@@ -18,12 +18,11 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "waii-sdk-py>=1.28.2",
-    "requests>=2.31.0",
-    "python-dotenv>=1.0.0",
+    "waii-sdk-py~=1.28.2",
+    "requests~=2.31.0",
+    "python-dotenv~=1.0.0",
     "kbcstorage>=1.4.0",
-    "pyyaml>=6.0",
-    "pydantic>=2.0.0",
+    "PyYAML~=6.0",
 ]
 
 [project.urls]

@@ -44,7 +44,7 @@ Handles all interactions with WAII:
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.10+
 - WAII API access
 - Keboola Connection access
 - Environment configuration (see below)
@@ -143,3 +143,11 @@ waii_testing/
 ├── .env                              # Environment configuration (gitignored)
 └── README.md                         # This file
 ```
+
+## Dependencies
+
+This project uses the following key dependencies (all managed through pyproject.toml):
+- `waii-sdk-py` - SDK for interacting with WAII API
+- `kbcstorage` - Client for Keboola Storage API
+- `requests` - HTTP library for API requests
+- `python-dotenv` - For loading environment variables from .env files

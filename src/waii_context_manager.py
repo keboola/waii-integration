@@ -21,13 +21,13 @@ LOG = logging.getLogger(__name__)
 
 class WaiiSemanticContextManager:
     """Manages interactions with WAII semantic context"""
-    
     def __init__(self):
         """Initialize the WAII semantic context manager"""
         self._setup_environment()
         self._initialize_connection()
         self.statement_ids = []  # Store statement IDs for later removal
-    
+
+
     def _setup_environment(self) -> None:
         """Set up WAII environment variables and validate required ones are present.
 
@@ -45,6 +45,7 @@ class WaiiSemanticContextManager:
             raise ValueError(f"Missing WAII environment variables: {', '.join(missing_vars)}")
         
         LOG.info("Environment variables validated successfully")
+
 
     def _initialize_connection(self) -> None:
         """Initialize Waii SDK with API URL and key, and activate the connection."""
@@ -101,6 +102,7 @@ class WaiiSemanticContextManager:
             # If we couldn't find or activate a specific connection, raise an error
             raise ValueError("Could not find or activate a connection with required workspace and database identifiers")
 
+
     def create_semantic_context_statements(self, metadata: Dict[str, dict], max_columns: int = 10) -> List[SemanticStatement]:
         """
         Create semantic context statements from Keboola metadata.
@@ -108,12 +110,12 @@ class WaiiSemanticContextManager:
         Args:
             metadata: Dictionary of table metadata
             max_columns: Maximum number of columns to include in each table statement (default: 10)
-        
+
         Returns:
             List of SemanticStatement objects
         """
         statements = []
-        
+
         # Add a global statement about the entire dataset
         global_statement = SemanticStatement(
             statement=f"This is metadata imported from Keboola Connection. It contains information about {len(metadata)} tables.",
@@ -122,68 +124,67 @@ class WaiiSemanticContextManager:
             labels=["kb_project"]
         )
         statements.append(global_statement)
-        
+
         # Add statements for each table
         for table_id, table_meta in metadata.items():
             display_name = table_meta['display_name']
             description = table_meta['description']
-            
+
             # Skip tables with no useful descriptions
             if description == 'NO_DATA_AVAILABLE':
                 description = f"A table with {table_meta['rows_count']} rows"
-            
-            # Create a statement for the table
-            table_statement = (
-                f"Table '{display_name}' ({table_id}) contains {table_meta['rows_count']} rows. "
-                f"Description: {description}. "
+
+            # Create a more focused statement for the table's purpose
+            table_statement = SemanticStatement(
+                statement=f"Table '{display_name}' contains {description}.",
+                always_include=False,
+                critical=False,
+                labels=["kb_project"],
+                lookup_summaries=[display_name, table_id]
             )
-            
-            # Add column information if available
-            if table_meta['columns']:
-                # Extract and format column names properly based on the actual structure
-                columns = table_meta['columns']
-                
-                # Assuming columns are either strings or objects with a 'name' attribute
-                column_names = []
-                for col in columns[:max_columns]:
-                    if isinstance(col, str):
-                        column_names.append(col)
-                    elif isinstance(col, dict) and 'name' in col:
-                        column_names.append(col['name'])
-                    else:
-                        # If we can't determine the column name, use a generic placeholder
-                        column_names.append("unnamed column")
-                
-                column_info = ", ".join(column_names)
-                if len(columns) > max_columns:
-                    column_info += f", and {len(columns) - max_columns} more columns"
-                table_statement += f"Columns: {column_info}."
-            
-            # Add component information
+            statements.append(table_statement)
+ 
+            # Add component information if available and useful
             comp_id = table_meta['created_by_component']['id']
             if comp_id != 'NO_DATA_AVAILABLE':
-                table_statement += f" Created by {comp_id} ({table_meta['created_by_component']['description']})."
-            
-            # Add last import and change dates if available
-            if table_meta.get('last_import_date'):
-                table_statement += f" Last imported on {table_meta['last_import_date']}."
-                
-            if table_meta.get('last_change_date'):
-                table_statement += f" Last changed on {table_meta['last_change_date']}."
-            
-            # Add bucket and stage information
-            table_statement += f" Located in {table_meta['bucket']['stage']} stage, bucket {table_meta['bucket']['id']}."
-            
-            # Create a semantic statement for this table
-            statement = SemanticStatement(
-                statement=table_statement,
-                always_include=False,  # Only include when relevant
+                component_statement = SemanticStatement(
+                    statement=f"Table '{display_name}' was created by {comp_id} ({table_meta['created_by_component']['description']}).",
+                    always_include=False,
+                    critical=False,
+                    labels=["kb_project", "component"],
+                    lookup_summaries=[display_name, table_id, "source", "component", "created by"]
+                )
+                statements.append(component_statement)
+
+            # Add data freshness information if available
+            if table_meta.get('last_import_date') or table_meta.get('last_change_date'):
+                freshness_info = ""
+                if table_meta.get('last_import_date'):
+                    freshness_info += f"Last imported on {table_meta['last_import_date']}. "
+
+                if table_meta.get('last_change_date'):
+                    freshness_info += f"Last changed on {table_meta['last_change_date']}."
+
+                freshness_statement = SemanticStatement(
+                    statement=f"Data freshness for '{display_name}': {freshness_info}",
+                    always_include=False,
+                    critical=False,
+                    labels=["kb_project", "freshness"],
+                    lookup_summaries=[display_name, table_id, "fresh", "updated", "recent"]
+                )
+                statements.append(freshness_statement)
+
+            rows_statement = SemanticStatement(
+                statement=f"Table '{display_name}' contains {table_meta['rows_count']} rows of data.",
+                always_include=False,
                 critical=False,
-                labels=["kb_project"]
+                labels=["kb_project", "size"],
+                lookup_summaries=[display_name, table_id, "size", "row count", "volume"]
             )
-            statements.append(statement)
-        
+            statements.append(rows_statement)
+
         return statements
+
 
     def add_to_semantic_context(self, statements: List[SemanticStatement]) -> None:
         """
@@ -200,19 +201,19 @@ class WaiiSemanticContextManager:
             resp: ModifySemanticContextResponse = SemanticContext.modify_semantic_context(
                 ModifySemanticContextRequest(updated=statements)
             )
-            
+
             # Store the statement IDs
             statement_ids = [stmt.id for stmt in resp.updated]
-            
+
             # Log the results
             LOG.info(f"Successfully added {len(resp.updated)} semantic context statements to WAII")
-            
+
             if len(resp.updated) != len(statements):
                 LOG.warning(f"Not all statements were added: {len(resp.updated)}/{len(statements)}")
-            
+
             # Save statement IDs to a file for later reference
             self._save_statement_ids_to_file(statement_ids)
-            
+
         except Exception as e:
             # Print detailed error information
             LOG.error(f"Error adding semantic context: {str(e)}")
@@ -224,7 +225,8 @@ class WaiiSemanticContextManager:
                 except:
                     LOG.error(f"Response status: {e.response.status_code}, content: {e.response.text}")
             raise
-    
+
+
     def _save_statement_ids_to_file(self, statement_ids: List[str]) -> None:
         """
         Save statement IDs to a file for later reference.

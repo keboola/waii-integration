@@ -1,0 +1,6 @@
+.env
+.venv
+.tox/
+scripts/statement_ids/
+*.log
+*.log.*

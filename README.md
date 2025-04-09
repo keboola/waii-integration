@@ -1,10 +1,11 @@
-# WAII Testing
+# WAII Integration
 
-This repository contains scripts for integrating and testing WAII (AI-based SQL assistant) with Keboola Connection.
+This repository contains scripts integrating WAII (AI-based SQL assistant) and Keboola Connection.
+In particular it pulls data from a specific Keboola project and adds it to semantic context. It can also delete semantic context based on saved statement ids (which are saved for each run of the adding semantic context).
 
 ## Overview
 
-The WAII Testing project provides tools to:
+The WAII Integration project provides tools to:
 
 1. Connect to WAII API using environment-based configuration
 2. Import metadata from Keboola Connection into WAII semantic context
@@ -20,7 +21,7 @@ This project performs the following end-to-end process:
 3. **Metadata Processing**: Transforms Keboola metadata into a format suitable for WAII
 4. **Semantic Context Creation**: Creates semantic statements based on best practices using the `WaiiSemanticContextManager`
 5. **WAII Integration**: Adds the semantic statements to WAII's knowledge graph
-6. **Statement ID Management**: Saves statement IDs to the `scripts/statement_ids` directory for future reference or deletion
+6. **Statement ID Management**: Saves statement IDs to the `data/statement_ids` directory for future reference or deletion
 
 ## Key Components
 
@@ -54,7 +55,7 @@ Handles all interactions with WAII:
 1. Clone this repository
 2. Create a virtual environment: `python -m venv venv`
 3. Activate the virtual environment: 
-   - Windows: `venv\Scripts\activate`
+   - Windows: `virtualenv --download venv
    - Unix/Mac: `source venv/bin/activate`
 4. Install dependencies: `pip install -e .`
 
@@ -82,7 +83,7 @@ For convenience, you can directly run the `semantic_context_add.py` script to ad
 
 ```bash
 # Make sure your .env file is configured with the required environment variables
-cd scripts
+cd src/keboola/waii-integration
 python semantic_context_add.py
 ```
 

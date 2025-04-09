@@ -129,16 +129,10 @@ waii_manager.add_to_semantic_context(statements)
 ## Project Structure
 
 ```
-waii_testing/
+waii_integration/
 ├── src/
-│   ├── waii_context_manager.py       # WAII semantic context management
-│   ├── keboola_metadata_collector.py # Metadata extraction from Keboola
-│   └── keboola_utils/                # Utilities for Keboola
-│       ├── keboola_client.py         # Client for Keboola API
-│       └── keboola_component_descriptions.py # Fetch component information
-├── scripts/
-│   └── semantic_context_add.py       # Add semantic context from Keboola project to WAII
-│   └── statement_ids/                # Saved statement IDs (gitignored)
+│   ├── keboola
+│       ├── waii_integration
 ├── pyproject.toml                    # Project configuration
 ├── .env                              # Environment configuration (gitignored)
 └── README.md                         # This file

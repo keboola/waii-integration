@@ -21,11 +21,16 @@ LOG = logging.getLogger(__name__)
 
 class WaiiSemanticContextManager:
     """Manages interactions with WAII semantic context"""
-    def __init__(self):
-        """Initialize the WAII semantic context manager"""
+    def __init__(self, statement_dir: str = "statement_ids"):
+        """Initialize the WAII semantic context manager
+        
+        Args:
+            statement_dir: Optional subfolder name within data directory for storing statement IDs (default: "statement_ids")
+        """
         self._setup_environment()
         self._initialize_connection()
         self.statement_ids = []  # Store statement IDs for later removal
+        self.statement_dir = statement_dir  # Subfolder name for storing statement IDs
 
 
     def _setup_environment(self) -> None:
@@ -238,8 +243,12 @@ class WaiiSemanticContextManager:
             # Get the directory where this script is located
             script_dir = os.path.dirname(os.path.abspath(__file__))
             
-            # Create a directory for storing statement IDs if it doesn't exist
-            statements_dir = os.path.join(script_dir, "..", "scripts", "statement_ids")
+            # Navigate to the root directory of the repository
+            root_dir = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
+            
+            # Create data folder and statements subfolder
+            data_dir = os.path.join(root_dir, "data")
+            statements_dir = os.path.join(data_dir, self.statement_dir)
             os.makedirs(statements_dir, exist_ok=True)
             
             # Generate a timestamp for the filename

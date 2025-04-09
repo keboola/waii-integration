@@ -129,10 +129,10 @@ waii_manager.add_to_semantic_context(statements)
 ## Project Structure
 
 ```
-waii_integration/
+waii-integration/
 ├── src/
 │   ├── keboola
-│       ├── waii_integration
+│       ├── waii-integration
 ├── pyproject.toml                    # Project configuration
 ├── .env                              # Environment configuration (gitignored)
 └── README.md                         # This file

@@ -133,7 +133,7 @@ waii_manager.add_to_semantic_context(statements)
 waii-integration/
 ├── src/
 │   ├── keboola
-│       ├── waii-integration
+│       ├── waii_integration
 ├── pyproject.toml                    # Project configuration
 ├── .env                              # Environment configuration (gitignored)
 └── README.md                         # This file

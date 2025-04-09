@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "keboola.waii_integration"
 version = "0.1.0"
 authors = [
-    {name = "Keboola", email = "developers@keboola.com"},
+    {name = "Keboola", email = "devel@keboola.com"},
 ]
 description = "Keboola Integration with WAII"
 readme = "README.md"

@@ -175,4 +175,4 @@ cython_debug/
 
 # Custom
 .vscode
-data/*
+data/

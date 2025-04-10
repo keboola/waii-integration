@@ -14,8 +14,9 @@ import os
 import logging
 import sys
 import requests
-from typing import Dict, List
+from typing import Optional, dict, list
 from dotenv import load_dotenv
+from keboola.waii_integration.keboola_utils.keboola_models import KeboolaComponent
 
 # Add the parent directory to sys.path to import the KeboolaClient
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,11 +32,11 @@ class ComponentDescriptionManager:
 
     def __init__(self):
         """Initialize the component description manager and load environment variables"""
-        self._cache = None
+        self._component_cache: Optional[dict[str, KeboolaComponent]] = None
         load_dotenv(verbose=True)
 
 
-    def _get_components_from_api(self, token: str, base_url: str) -> List[Dict]:
+    def _get_components_from_api(self, token: str, base_url: str) -> list[KeboolaComponent]:
         """
         Fetch components directly from the Keboola API endpoint.
         
@@ -44,19 +45,22 @@ class ComponentDescriptionManager:
             base_url: Keboola base URL
             
         Returns:
-            List of component dictionaries
+            List of KeboolaComponent objects
         """
         url = f"{base_url}/v2/storage"
         headers = {"X-StorageApi-Token": token}
         
         LOG.info(f"Fetching components from API endpoint: {url}")
-        
+
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
             
             data = response.json()
-            components = data.get('components', [])
+            components_data = data.get('components', [])
+            
+            # Convert to pydantic models
+            components = [KeboolaComponent(**comp) for comp in components_data]
             
             LOG.info(f"Retrieved {len(components)} components from API")
             return components
@@ -65,7 +69,7 @@ class ComponentDescriptionManager:
             return []
 
 
-    def _fetch_component_list(self) -> Dict[str, str]:
+    def _fetch_component_list(self) -> dict[str, str]:
         """
         Fetch component definitions from the Keboola API.
         
@@ -86,15 +90,13 @@ class ComponentDescriptionManager:
             # Call the API directly
             components = self._get_components_from_api(token, base_url)
             
+            # Store full component objects in component cache
+            self._component_cache = {comp.id: comp for comp in components}
+            
             # Create a mapping of component ID to description
             component_map = {}
             for component in components:
-                component_id = component.get('id')
-                description = component.get('description', '')
-                name = component.get('name', '')
-                
-                # Use description if available, otherwise use name
-                component_map[component_id] = description if description else name
+                component_map[component.id] = component.get_display_description()
             
             LOG.info(f"Successfully fetched {len(component_map)} component descriptions")
             return component_map
@@ -115,9 +117,29 @@ class ComponentDescriptionManager:
         Returns:
             A human-readable description of the component or default message if not found
         """
-        # Initialize cache if it's the first call
-        if self._cache is None:
-            self._cache = self._fetch_component_list()
+        # Initialize cache if needed
+        if self._component_cache is None:
+            self._fetch_component_list()
         
-        # Return description from cache or default message
-        return self._cache.get(component_id, f"Component {component_id} (no description available)")
+        # Get component and return description or default message
+        component = self._component_cache.get(component_id)
+        return component.get_display_description() if component else f"Component {component_id} (no description available)"
+
+
+    def get_component(self, component_id: str) -> Optional[KeboolaComponent]:
+        """
+        Get a component object by its ID.
+        Fetches the component list from the API on first call.
+        
+        Args:
+            component_id: The Keboola component ID
+            
+        Returns:
+            KeboolaComponent object or None if not found
+        """
+        # Initialize cache if it's the first call
+        if self._component_cache is None:
+            self._fetch_component_list()
+            
+        # Return component from cache or None
+        return self._component_cache.get(component_id)

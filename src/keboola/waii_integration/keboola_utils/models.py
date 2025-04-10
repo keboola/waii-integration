@@ -9,7 +9,7 @@ from typing import Optional, Any
 from pydantic import BaseModel, Field
 
 
-class KeboolaBucket(BaseModel):
+class Bucket(BaseModel):
     """Represents a Keboola bucket."""
     id: str
     uri: Optional[str] = None
@@ -38,7 +38,7 @@ class KeboolaBucket(BaseModel):
     metadata: Optional[list[dict[str, Any]]] = Field(default_factory=list)
 
 
-class KeboolaTable(BaseModel):
+class Table(BaseModel):
     """Represents a Keboola table metadata."""
     id: str
     uri: Optional[str] = None
@@ -77,13 +77,13 @@ class KeboolaTable(BaseModel):
         super().__init__(**data)
 
 
-class KeboolaTableDetail(KeboolaTable):
+class TableDetail(Table):
     """Represents detailed metadata for a Keboola table."""
     column_metadata: dict[str, list[dict[str, Any]]] = Field(default_factory=dict, alias="columnMetadata")
     bucket: Optional[dict[str, Any]] = None
 
 
-class KeboolaComponent(BaseModel):
+class Component(BaseModel):
     """Model representing a Keboola component."""
     id: str
     name: str
@@ -94,8 +94,8 @@ class KeboolaComponent(BaseModel):
         return self.description if self.description else self.name
 
 
-class KeboolaMetadata(BaseModel):
+class Metadata(BaseModel):
     """Represents the metadata extracted from Keboola."""
-    buckets: list[KeboolaBucket] = Field(default_factory=list)
-    tables: dict[str, list[KeboolaTable]] = Field(default_factory=dict)
-    table_details: dict[str, KeboolaTableDetail] = Field(default_factory=dict)
+    buckets: list[Bucket] = Field(default_factory=list)
+    tables: dict[str, list[Table]] = Field(default_factory=dict)
+    table_details: dict[str, TableDetail] = Field(default_factory=dict)

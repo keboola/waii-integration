@@ -5,7 +5,7 @@ Client for interacting with the Keboola Storage API.
 import logging
 from typing import Optional
 from kbcstorage.client import Client
-from keboola.waii_integration.keboola_utils.keboola_models import KeboolaMetadata, KeboolaBucket, KeboolaTable, KeboolaTableDetail
+from keboola.waii_integration.keboola_utils.models import Metadata, Bucket, Table, TableDetail
 
 LOG = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class KeboolaClient:
         self.client = Client(api_url, token)
         LOG.info("Initialized KeboolaClient with API URL: %s", api_url)
 
-    def extract_metadata(self, limit: Optional[int] = None) -> KeboolaMetadata:
+    def extract_metadata(self, limit: Optional[int] = None) -> Metadata:
         """
         Extract metadata from Keboola project.
         
@@ -26,16 +26,16 @@ class KeboolaClient:
             limit: Maximum total number of tables to fetch across all buckets (all tables if None)
             
         Returns:
-            KeboolaMetadata containing buckets, tables and their metadata
+            Metadata containing buckets, tables and their metadata
         """
         LOG.info("Starting metadata extraction (limit=%s)", limit)
 
         try:
             # Create empty result structure
-            result = KeboolaMetadata()
+            result = Metadata()
 
             # Get and convert buckets
-            result.buckets = [KeboolaBucket(**b) for b in self.client.buckets.list()]
+            result.buckets = [Bucket(**b) for b in self.client.buckets.list()]
 
             # Track total tables processed
             total_tables_processed = 0
@@ -43,7 +43,7 @@ class KeboolaClient:
             # Process each bucket
             for bucket in result.buckets:
                 # Get and convert tables for this bucket
-                tables = [KeboolaTable(**t) for t in self.client.buckets.list_tables(bucket.id)]
+                tables = [Table(**t) for t in self.client.buckets.list_tables(bucket.id)]
                 result.tables[bucket.id] = tables
 
                 # Get detailed info for each table
@@ -56,7 +56,7 @@ class KeboolaClient:
                     try:
                         # Get and convert table details
                         detail = self.client.tables.detail(table.id)
-                        result.table_details[table.id] = KeboolaTableDetail(**detail)
+                        result.table_details[table.id] = TableDetail(**detail)
                         LOG.info(f"Fetched details for table {table.id}")
                         total_tables_processed += 1
                     except Exception as e:

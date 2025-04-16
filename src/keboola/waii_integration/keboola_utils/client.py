@@ -5,7 +5,7 @@ Client for interacting with the Keboola Storage API.
 import logging
 from typing import Optional
 from kbcstorage.client import Client
-from keboola.waii_integration.keboola_utils.models import Metadata, Bucket, Table, TableDetail
+from keboola.waii_integration.keboola_utils.models import Metadata, Bucket, Table
 
 LOG = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class KeboolaClient:
             limit: Maximum total number of tables to fetch across all buckets (all tables if None)
             
         Returns:
-            Metadata containing buckets, tables and their metadata
+            Metadata containing buckets and tables with their metadata
         """
         LOG.info("Starting metadata extraction (limit=%s)", limit)
 
@@ -43,7 +43,7 @@ class KeboolaClient:
             # Process each bucket
             for bucket in result.buckets:
                 # Get and convert tables for this bucket
-                tables = [Table(**t) for t in self.client.buckets.list_tables(bucket.id)]
+                tables = [Table(**t | {"bucket_id": bucket.id}) for t in self.client.buckets.list_tables(bucket.id)]
                 result.tables[bucket.id] = tables
 
                 # Get detailed info for each table
@@ -54,9 +54,9 @@ class KeboolaClient:
                         return result
 
                     try:
-                        # Get and convert table details
+                        # Get table details and update the table using the elegant method
                         detail = self.client.tables.detail(table.id)
-                        result.table_details[table.id] = TableDetail(**detail)
+                        table.update_from_detail(detail)
                         LOG.info(f"Fetched details for table {table.id}")
                         total_tables_processed += 1
                     except Exception as e:

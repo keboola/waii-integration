@@ -14,7 +14,6 @@ import os
 import logging
 import sys
 import requests
-from typing import Optional, dict, list
 from dotenv import load_dotenv
 from keboola.waii_integration.keboola_utils.models import Component
 
@@ -29,7 +28,7 @@ class ComponentDescriptionManager:
 
     def __init__(self):
         """Initialize the component description manager and load environment variables"""
-        self._component_cache: Optional[dict[str, Component]] = None
+        self._component_cache: dict[str, Component] | None = None
         load_dotenv(verbose=True)
 
 
@@ -123,7 +122,7 @@ class ComponentDescriptionManager:
         return component.get_display_description() if component else f"Component {component_id} (no description available)"
 
 
-    def get_component(self, component_id: str) -> Optional[Component]:
+    def get_component(self, component_id: str) -> Component | None:
         """
         Get a component object by its ID.
         Fetches the component list from the API on first call.

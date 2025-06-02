@@ -1,7 +1,7 @@
 # WAII Integration
 
 This repository contains scripts integrating WAII (AI-based SQL assistant) and Keboola Connection.
-In particular it pulls data from a specific Keboola project and adds it to semantic context. It can also delete semantic context based on saved statement ids (which are saved for each run of the adding semantic context).
+In particular it pulls metadata from a specific Keboola project and adds it to semantic context. It can also delete semantic context based on saved statement ids (which are saved for each run of the adding semantic context).
 
 ## Overview
 
@@ -145,4 +145,3 @@ This project uses the following key dependencies (all managed through pyproject.
 - `waii-sdk-py` - SDK for interacting with WAII API
 - `kbcstorage` - Client for Keboola Storage API
 - `requests` - HTTP library for API requests
-- `python-dotenv` - For loading environment variables from .env files

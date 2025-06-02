@@ -1,0 +1,120 @@
+"""
+Component descriptions for Keboola components.
+Fetches component information dynamically from the Keboola API.
+
+Usage:
+    from component_descriptions import ComponentDescriptionManager
+    
+    # Get a component description
+    manager = ComponentDescriptionManager()
+    description = manager.get_description('component.id')
+"""
+
+import os
+import logging
+import requests
+
+# Set up logging and initialize Keboola API configuration from environment
+LOG = logging.getLogger(__name__)
+KEBOOLA_API_TOKEN = os.getenv('KEBOOLA_API_TOKEN')
+KEBOOLA_BASE_URL = os.getenv('KEBOOLA_PROJECT_URL', '').split('/admin')[0]
+
+
+class ComponentDescriptionManager:
+    """
+    Manages component descriptions from Keboola API
+    """
+
+    def __init__(self):
+        """Initialize the component description manager"""
+        self._cache = None
+        
+        # Store API configuration
+        self._token = KEBOOLA_API_TOKEN
+        self._base_url = KEBOOLA_BASE_URL
+        
+        # Initialize headers for API calls
+        self._headers = {"X-StorageApi-Token": self._token} if self._token else {}
+
+
+    def _get_components_from_api(self, token: str, base_url: str) -> list[dict]:
+        """
+        Fetch components directly from the Keboola API endpoint.
+        
+        Args:
+            token: Keboola Storage API token
+            base_url: Keboola base URL
+            
+        Returns:
+            List of component dictionaries
+        """
+        url = f"{base_url}/v2/storage"
+        
+        LOG.info(f"Fetching components from API endpoint: {url}")
+        
+        try:
+            response = requests.get(url, headers=self._headers)
+            response.raise_for_status()
+            
+            data = response.json()
+            components = data.get('components', [])
+            
+            LOG.info(f"Retrieved {len(components)} components from API")
+            return components
+        except Exception as e:
+            LOG.error(f"Error fetching components from API: {e}")
+            return []
+
+
+    def _fetch_component_list(self) -> dict[str, str]:
+        """
+        Fetch component definitions from the Keboola API.
+        
+        Returns:
+            A dictionary mapping component IDs to their descriptions
+        """
+        if not self._token or not self._base_url:
+            LOG.warning("Missing Keboola API credentials, returning empty component descriptions")
+            return {}
+        
+        try:
+            LOG.info("Fetching component list from API")
+            
+            # Call the API directly
+            components = self._get_components_from_api(self._token, self._base_url)
+            
+            # Create a mapping of component ID to description
+            component_map = {}
+            for component in components:
+                component_id = component.get('id')
+                description = component.get('description', '')
+                name = component.get('name', '')
+                
+                # Use description if available, otherwise use name
+                component_map[component_id] = description if description else name
+            
+            LOG.info(f"Successfully fetched {len(component_map)} component descriptions")
+            return component_map
+        
+        except Exception as e:
+            LOG.error(f"Error fetching component list: {e}")
+            return {}
+
+
+    def get_description(self, component_id: str) -> str:
+        """
+        Get a human-readable description for a component based on its ID.
+        Fetches the component list from the API on first call.
+        
+        Args:
+            component_id: The Keboola component ID
+            
+        Returns:
+            A human-readable description of the component or default message if not found
+        """
+        # Initialize cache if it's the first call
+        if self._cache is None:
+            self._cache = self._fetch_component_list()
+        
+        # Return description from cache or default message
+        return self._cache.get(component_id, f"Component {component_id} (no description available)")

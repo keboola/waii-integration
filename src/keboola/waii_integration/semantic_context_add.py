@@ -22,14 +22,12 @@ def main():
                         help='Output directory name inside data/ folder where statement IDs will be saved (default: statement_ids)')
     args = parser.parse_args()
     
-    # Set up logging
     logging.basicConfig(
         format='%(asctime)s %(levelname)s: %(message)s',
         level=logging.INFO
     )
 
-    # Create data directory if it doesn't exist
-    # Get the project root directory
+    # Create data directory
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     data_dir = os.path.join(project_root, 'data')
     out_dir = os.path.join(data_dir, args.out_dir)
@@ -63,10 +61,7 @@ def main():
         table_count = len(metadata.tables)
         LOG.info(f"Adding metadata for {table_count} tables to WAII")
         try:
-            # Initialize WAII manager and add statements
             waii_manager = WaiiSemanticContextManager(statement_ids_path=args.out_dir)
-            
-            # Create and add semantic context statements
             statements = waii_manager.create_semantic_context_statements(metadata.tables)
             waii_manager.add_to_semantic_context(statements)
 

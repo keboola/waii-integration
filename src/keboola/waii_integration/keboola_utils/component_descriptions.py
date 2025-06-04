@@ -29,11 +29,8 @@ class ComponentDescriptionManager:
         """Initialize the component description manager"""
         self._cache = None
         
-        # Store API configuration
         self._token = KEBOOLA_API_TOKEN
         self._base_url = KEBOOLA_BASE_URL
-        
-        # Initialize headers for API calls
         self._headers = {"X-StorageApi-Token": self._token} if self._token else {}
 
 
@@ -79,8 +76,6 @@ class ComponentDescriptionManager:
         
         try:
             LOG.info("Fetching component list from API")
-            
-            # Call the API directly
             components = self._get_components_from_api(self._token, self._base_url)
             
             # Create a mapping of component ID to description
@@ -116,5 +111,4 @@ class ComponentDescriptionManager:
         if self._cache is None:
             self._cache = self._fetch_component_list()
         
-        # Return description from cache or default message
         return self._cache.get(component_id, f"Component {component_id} (no description available)")

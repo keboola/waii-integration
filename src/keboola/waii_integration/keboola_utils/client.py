@@ -27,32 +27,19 @@ class KeboolaClient:
         logging.info("Starting metadata extraction (limit=%s)", limit)
 
         try:
-            # Get all buckets
             buckets = self.client.buckets.list()
-            
-            # Initialize result structure
             result = {
                 'buckets': buckets,
                 'tables': {},
                 'table_details': {}
             }
-            
-            # Track total tables processed
             total_tables_processed = 0
-            
-            # Process each bucket
             for bucket in buckets:
                 bucket_id = bucket['id']
-                
-                # Get tables in bucket
                 tables = self.client.buckets.list_tables(bucket_id)
-                
-                # Store tables in the result
                 result['tables'][bucket_id] = tables
                 
-                # Get detailed info for each table
                 for table in tables:
-                    # Check if we've reached the total limit
                     if limit is not None and total_tables_processed >= limit:
                         logging.info(f"Reached total table limit ({limit}). Stopping metadata extraction.")
                         return result

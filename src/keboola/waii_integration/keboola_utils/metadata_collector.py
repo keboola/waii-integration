@@ -87,10 +87,7 @@ class KeboolaMetadataCollector:
             str: Path to the saved file, or None if save failed
         """
         try:
-            # Get the project root directory
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            
-            # Create the metadata directory inside data folder
             metadata_dir = os.path.join(project_root, 'data', 'metadata')
             os.makedirs(metadata_dir, exist_ok=True)
             
@@ -124,7 +121,6 @@ class KeboolaMetadataCollector:
         Returns:
             Metadata: Pydantic model containing metadata for tables
         """
-        # Pass the limit to the client to restrict API calls
         raw_metadata = self.client.extract_metadata(limit=limit)
         metadata = Metadata()
 
@@ -132,20 +128,14 @@ class KeboolaMetadataCollector:
         for bucket_id, tables in raw_metadata.get('tables', {}).items():
             for table in tables:
                 table_id = table.get('id', 'unknown')
-                # Only process tables that have details
                 if table_id not in raw_metadata.get('table_details', {}):
                     continue
                 
                 table_detail = raw_metadata.get('table_details', {}).get(table_id, {})
-                table_metadata = table_detail.get('metadata', [])
-                
-                # Get the component ID
+                table_metadata = table_detail.get('metadata', [])     
                 component_id = self._get_metadata_value(table_metadata, TableMetadataKeys.CreatedBy.COMPONENT_ID)
-                
-                # Get the component description using ComponentDescriptionManager
                 component_description = self.component_manager.get_description(component_id)
 
-                # Create Table model
                 table_model = Table(
                     id=table_id,
                     name=self._get_metadata_value(table_metadata, TableMetadataKeys.NAME),
@@ -167,7 +157,6 @@ class KeboolaMetadataCollector:
                 
                 metadata.tables[table_id] = table_model
         
-        # Save the collected metadata to a file
         saved_file = self._save_metadata_to_file(metadata)
         if saved_file:
             LOG.info(f"Metadata saved to {saved_file}")

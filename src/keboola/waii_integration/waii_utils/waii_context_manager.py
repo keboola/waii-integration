@@ -55,10 +55,7 @@ class WaiiSemanticContextManager:
         Returns:
             str: Full path to the data subdirectory
         """
-        # Get the project root directory
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        
-        # Create and return the full path
         data_dir = os.path.join(project_root, 'data', subdir)
         os.makedirs(data_dir, exist_ok=True)
         return data_dir
@@ -110,7 +107,6 @@ class WaiiSemanticContextManager:
                     if hasattr(conn, 'id'):
                         connection_ids.append(conn.id)
                     else:
-                        # If it's not an object with an id attribute, try to convert to string
                         connection_ids.append(str(conn))
                 except Exception:
                     pass
@@ -133,7 +129,6 @@ class WaiiSemanticContextManager:
                     except Exception as alt_error:
                         LOG.warning(f"Failed to activate alternative connection: {alt_error}")
             
-            # If we couldn't find or activate a specific connection, raise an error
             raise ValueError("Could not find or activate a connection with required workspace and database identifiers")
 
     def create_semantic_context_statements(self, tables: Dict[str, Table], max_columns: int = 10) -> list[SemanticStatement]:
@@ -159,10 +154,7 @@ class WaiiSemanticContextManager:
         
         # Add statements for each table
         for table_id, table in tables.items():
-            # Build a comprehensive statement with all table information
             statement_parts = []
-            
-            # Basic description
             display_name = table.display_name
             description = table.description
 
@@ -219,11 +211,9 @@ class WaiiSemanticContextManager:
         Args:
             statements: List of SemanticStatement objects
         """
-        # Log the number of statements being added
         LOG.info(f"Adding {len(statements)} semantic context statements to WAII")
         
         try:
-            # Save statements to file before adding to WAII
             saved_file = self._save_semantic_statements_to_file(statements)
             if saved_file:
                 LOG.info(f"Semantic statements saved to {saved_file}")
@@ -232,13 +222,9 @@ class WaiiSemanticContextManager:
             resp: ModifySemanticContextResponse = SemanticContext.modify_semantic_context(
                 ModifySemanticContextRequest(updated=statements)
             )
-            
-            # Store the statement IDs
             statement_ids = [stmt.id for stmt in resp.updated]
             
-            # Log the results
             LOG.info(f"Successfully added {len(resp.updated)} semantic context statements to WAII")
-            
             if len(resp.updated) != len(statements):
                 LOG.warning(f"Not all statements were added: {len(resp.updated)}/{len(statements)}")
             
@@ -246,9 +232,7 @@ class WaiiSemanticContextManager:
             self._save_statement_ids_to_file(statement_ids)
             
         except Exception as e:
-            # Print detailed error information
             LOG.error(f"Error adding semantic context: {str(e)}")
-            # If there's an HTTP response in the error, log it
             if hasattr(e, 'response') and e.response:
                 try:
                     error_detail = e.response.json()
@@ -269,14 +253,12 @@ class WaiiSemanticContextManager:
             str | None: Path to the saved file, or None if saving failed
         """
         try:
-            # Get the directory and create it if needed
             target_dir = self._get_data_directory(directory)
             
             # Generate filename with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = os.path.join(target_dir, filename_pattern.format(timestamp))
             
-            # Save the data
             with open(filename, 'w') as f:
                 json.dump(data, f, indent=2)
             

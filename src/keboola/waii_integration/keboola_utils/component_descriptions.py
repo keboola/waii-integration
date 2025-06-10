@@ -34,7 +34,7 @@ class ComponentDescriptionManager:
         self._headers = {"X-StorageApi-Token": self._token} if self._token else {}
 
 
-    def _get_components_from_api(self, token: str, base_url: str) -> list[dict]:
+    def _get_components_from_api(self, base_url: str) -> list[dict]:
         """
         Fetch components directly from the Keboola API endpoint.
         
@@ -82,11 +82,35 @@ class ComponentDescriptionManager:
             component_map = {}
             for component in components:
                 component_id = component.get('id')
-                description = component.get('description', '')
-                name = component.get('name', '')
+                if not component_id:
+                    continue
                 
-                # Use description if available, otherwise use name
-                component_map[component_id] = description if description else name
+                # Try to get the best available description in order of preference:
+                # 1. long_description (most detailed)
+                # 2. description (shorter summary)
+                # 3. documentation (if available)
+                # 4. name (fallback)
+                # 5. component ID (last resort)
+                description = (
+                    component.get('longDescription') or 
+                    component.get('description') or 
+                    component.get('documentation') or 
+                    component.get('name') or 
+                    f"Component {component_id}"
+                )
+                
+                # Store additional metadata that might be useful
+                component_map[component_id] = {
+                    'description': description,
+                    'name': component.get('name', ''),
+                    'long_description': component.get('longDescription', ''),
+                    'documentation_url': component.get('documentationUrl', '')
+                }
+                
+                # Log warning if no meaningful description is available
+                if not any([component.get('description'), component.get('longDescription'), 
+                          component.get('documentation'), component.get('name')]):
+                    LOG.warning(f"Component {component_id} has no description, name or documentation available")
             
             LOG.info(f"Successfully fetched {len(component_map)} component descriptions")
             return component_map
@@ -111,4 +135,30 @@ class ComponentDescriptionManager:
         if self._cache is None:
             self._cache = self._fetch_component_list()
         
-        return self._cache.get(component_id, f"Component {component_id} (no description available)")
+        component_info = self._cache.get(component_id)
+        if not component_info:
+            return f"Component {component_id} (no description available)"
+            
+        return component_info['description']
+
+    def get_full_component_info(self, component_id: str) -> dict:
+        """
+        Get all available information for a component based on its ID.
+        Fetches the component list from the API on first call.
+        
+        Args:
+            component_id: The Keboola component ID
+            
+        Returns:
+            A dictionary containing all available component information
+        """
+        # Initialize cache if it's the first call
+        if self._cache is None:
+            self._cache = self._fetch_component_list()
+            
+        return self._cache.get(component_id, {
+            'description': f"Component {component_id} (no description available)",
+            'name': '',
+            'long_description': '',
+            'documentation_url': ''
+        })

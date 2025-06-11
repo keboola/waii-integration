@@ -7,6 +7,7 @@ import os
 import json
 import datetime
 from typing import Dict
+from pathlib import Path
 from keboola.waii_integration.keboola_utils.metadata_collector import Table
 
 # Import WAII SDK
@@ -55,10 +56,10 @@ class WaiiSemanticContextManager:
         Returns:
             str: Full path to the data subdirectory
         """
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        data_dir = os.path.join(project_root, 'data', subdir)
-        os.makedirs(data_dir, exist_ok=True)
-        return data_dir
+        project_root = Path(__file__).parents[4]
+        data_dir = project_root / 'data' / subdir
+        data_dir.mkdir(parents=True, exist_ok=True)
+        return str(data_dir)
 
     def _setup_environment(self) -> None:
         """Set up WAII environment variables and validate required ones are present.

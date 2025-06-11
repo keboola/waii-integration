@@ -5,6 +5,7 @@ Handles fetching and processing metadata from Keboola projects.
 
 import logging
 import os
+from pathlib import Path
 import datetime
 import json
 from typing import Optional, Any
@@ -71,17 +72,17 @@ class Bucket(BaseModel):
 
 class Table(BaseModel):
     """Represents a Keboola table with its metadata."""
-    id: str
-    name: str = ""
-    description: str = ""
+    id: str = Field()
+    name: str = Field(default="")
+    description: str = Field(default="")
     display_name: str = Field(alias="displayName")
     last_import_date: Optional[datetime] = Field(None, alias="lastImportDate")
     last_change_date: Optional[datetime] = Field(None, alias="lastChangeDate")
-    created_by_component: ComponentInfo
+    created_by_component: ComponentInfo = Field()
     columns: list[str] = Field(default_factory=list)
-    bucket: Bucket
+    bucket: Bucket = Field()
     rows_count: int = Field(0, alias="rowsCount")
-    metadata: list[MetadataItem]
+    metadata: list[MetadataItem] = Field()
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -180,23 +181,57 @@ class KeboolaMetadataCollector:
             str: Path to the saved file, or None if save failed
         """
         try:
-            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            metadata_dir = os.path.join(project_root, 'data', 'metadata')
-            os.makedirs(metadata_dir, exist_ok=True)
+            project_root = Path(__file__).parents[4]
+            metadata_dir = project_root / 'data' / 'metadata'
+            metadata_dir.mkdir(parents=True, exist_ok=True)
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = os.path.join(metadata_dir, f"keboola_metadata_{timestamp}.json")
+            filename = metadata_dir / f"keboola_metadata_{timestamp}.json"
+            
+            # Reorganize tables by bucket_id
+            tables_by_bucket = {}
+            for table_id, table in metadata.tables.items():
+                bucket_id = table.bucket.id
+                if bucket_id not in tables_by_bucket:
+                    tables_by_bucket[bucket_id] = []
+                tables_by_bucket[bucket_id] = tables_by_bucket.get(bucket_id, []) + [table]
+            
+            # Convert metadata to dict with proper datetime handling
+            metadata_dict = {
+                'tables': {
+                    bucket_id: [
+                        {
+                            'id': table.id,
+                            'name': table.name,
+                            'description': table.description,
+                            'display_name': table.display_name,
+                            'last_import_date': table.last_import_date.isoformat() if table.last_import_date else None,
+                            'last_change_date': table.last_change_date.isoformat() if table.last_change_date else None,
+                            'created_by_component': table.created_by_component.model_dump(),
+                            'columns': table.columns,
+                            'bucket': table.bucket.model_dump(),
+                            'rows_count': table.rows_count,
+                            'metadata': [m.model_dump() for m in table.metadata]
+                        }
+                        for table in tables
+                    ]
+                    for bucket_id, tables in tables_by_bucket.items()
+                }
+            }
+            
+            # Prepare the final JSON structure
+            output_data = {
+                'timestamp': timestamp,
+                'project': os.getenv('KEBOOLA_PROJECT_NAME', 'unknown'),
+                'table_count': sum(len(tables) for tables in tables_by_bucket.values()),
+                'metadata': metadata_dict
+            }
             
             with open(filename, 'w') as f:
-                json.dump({
-                    'timestamp': timestamp,
-                    'project': os.getenv('KEBOOLA_PROJECT_NAME', 'unknown'),
-                    'table_count': len(metadata.tables),
-                    'metadata': metadata.model_dump()
-                }, f, indent=2)
+                json.dump(output_data, f, indent=2)
             
             LOG.info(f"Saved metadata for {len(metadata.tables)} tables to {filename}")
-            return filename
+            return str(filename)
             
         except Exception as e:
             LOG.error(f"Error saving metadata to file: {e}")

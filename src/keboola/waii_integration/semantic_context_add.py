@@ -8,6 +8,7 @@ import logging
 import sys
 import os
 import argparse
+from pathlib import Path
 from keboola.waii_integration.waii_utils.waii_context_manager import WaiiSemanticContextManager
 from keboola.waii_integration.keboola_utils.metadata_collector import KeboolaMetadataCollector
 
@@ -27,11 +28,11 @@ def main():
         level=logging.INFO
     )
 
-    # Create data directory
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    data_dir = os.path.join(project_root, 'data')
-    out_dir = os.path.join(data_dir, args.out_dir)
-    os.makedirs(out_dir, exist_ok=True)
+    # Create data directory - use pathlib to get project root
+    project_root = Path(__file__).parents[3]
+    data_dir = project_root / 'data'
+    out_dir = data_dir / args.out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
     LOG.info(f"Ensuring output directory exists: {out_dir}")
     
     # Get settings from environment variables

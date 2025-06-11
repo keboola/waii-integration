@@ -39,6 +39,7 @@ class ComponentDescriptionManager:
         Fetch components directly from the Keboola API endpoint.
         
         Args:
+            token: Keboola Storage API token
             base_url: Keboola base URL
             
         Returns:
@@ -75,14 +76,13 @@ class ComponentDescriptionManager:
         
         try:
             LOG.info("Fetching component list from API")
-            components = self._get_components_from_api(self._base_url)
+            components = self._get_components_from_api(self._token, self._base_url)
             
             # Create a mapping of component ID to description
             component_map = {}
             for component in components:
                 component_id = component.get('id')
                 if not component_id:
-                    LOG.warning("Found component without ID in API response, skipping")
                     continue
                 
                 # Try to get the best available description in order of preference:
@@ -100,31 +100,17 @@ class ComponentDescriptionManager:
                 )
                 
                 # Store additional metadata that might be useful
-                component_info = {
+                component_map[component_id] = {
                     'description': description,
                     'name': component.get('name', ''),
                     'long_description': component.get('longDescription', ''),
                     'documentation_url': component.get('documentationUrl', '')
                 }
                 
-                # Log warning if component has no meaningful description
-                if not any([
-                    component.get('description'), 
-                    component.get('longDescription'),
-                    component.get('documentation')
-                ]):
-                    if component.get('name'):
-                        LOG.warning(
-                            f"Component {component_id} ({component.get('name')}) has no description, "
-                            "long description, or documentation available"
-                        )
-                    else:
-                        LOG.warning(
-                            f"Component {component_id} has no name, description, "
-                            "long description, or documentation available"
-                        )
-                
-                component_map[component_id] = component_info
+                # Log warning if no meaningful description is available
+                if not any([component.get('description'), component.get('longDescription'), 
+                          component.get('documentation'), component.get('name')]):
+                    LOG.warning(f"Component {component_id} has no description, name or documentation available")
             
             LOG.info(f"Successfully fetched {len(component_map)} component descriptions")
             return component_map
@@ -151,7 +137,6 @@ class ComponentDescriptionManager:
         
         component_info = self._cache.get(component_id)
         if not component_info:
-            LOG.warning(f"No information found for component {component_id}")
             return f"Component {component_id} (no description available)"
             
         return component_info['description']
@@ -171,14 +156,9 @@ class ComponentDescriptionManager:
         if self._cache is None:
             self._cache = self._fetch_component_list()
             
-        component_info = self._cache.get(component_id)
-        if not component_info:
-            LOG.warning(f"No information found for component {component_id}")
-            return {
-                'description': f"Component {component_id} (no description available)",
-                'name': '',
-                'long_description': '',
-                'documentation_url': ''
-            }
-            
-        return component_info
+        return self._cache.get(component_id, {
+            'description': f"Component {component_id} (no description available)",
+            'name': '',
+            'long_description': '',
+            'documentation_url': ''
+        })

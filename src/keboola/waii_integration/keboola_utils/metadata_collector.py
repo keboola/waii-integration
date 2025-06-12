@@ -18,21 +18,10 @@ LOG = logging.getLogger(__name__)
 
 
 class TableMetadataKeys:
-    """Active table metadata keys"""
+    """Table metadata keys """
     NAME = 'KBC.name'
     DESCRIPTION = 'KBC.description'
-    LAST_IMPORT_DATE = 'lastImportDate'
-    LAST_CHANGE_DATE = 'lastChangeDate'
-
-    class CreatedBy:
-        """Table creation metadata keys"""
-        COMPONENT_ID = 'KBC.createdBy.component.id'
-
-
-class MetadataItem(BaseModel):
-    """Model for metadata key-value pairs"""
-    key: str
-    value: str
+    CREATED_BY_COMPONENT_ID = 'KBC.createdBy.component.id'
 
 
 class ComponentInfo(BaseModel):
@@ -82,7 +71,7 @@ class Table(BaseModel):
     columns: list[str] = Field(default_factory=list)
     bucket: Bucket = Field()
     rows_count: int = Field(0, alias="rowsCount")
-    metadata: list[MetadataItem] = Field()
+    metadata: list[dict[str, str]] = Field()
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -96,10 +85,10 @@ class Table(BaseModel):
             return self
             
         for item in self.metadata:
-            if item.key == TableMetadataKeys.NAME and not self.name:
-                self.name = item.value
-            elif item.key == TableMetadataKeys.DESCRIPTION and not self.description:
-                self.description = item.value
+            if item['key'] == TableMetadataKeys.NAME and not self.name:
+                self.name = item['value']
+            elif item['key'] == TableMetadataKeys.DESCRIPTION and not self.description:
+                self.description = item['value']
         return self
 
 
@@ -134,13 +123,10 @@ class KeboolaMetadataCollector:
             Table model if successful, None if required data is missing
         """
         try:
-            metadata = [
-                MetadataItem(key=m['key'], value=m['value'])
-                for m in table_data.get('metadata', [])
-            ]
+            metadata = table_data.get('metadata', [])
 
             component_id = next(
-                (m.value for m in metadata if m.key == TableMetadataKeys.CreatedBy.COMPONENT_ID),
+                (m['value'] for m in metadata if m['key'] == TableMetadataKeys.CREATED_BY_COMPONENT_ID),
                 None
             )
             if not component_id:
@@ -211,7 +197,7 @@ class KeboolaMetadataCollector:
                             'columns': table.columns,
                             'bucket': table.bucket.model_dump(),
                             'rows_count': table.rows_count,
-                            'metadata': [m.model_dump() for m in table.metadata]
+                            'metadata': table.metadata
                         }
                         for table in tables
                     ]
@@ -236,6 +222,7 @@ class KeboolaMetadataCollector:
         except Exception as e:
             LOG.error(f"Error saving metadata to file: {e}")
             return None
+
 
     def get_tables_metadata_sample(self, limit: Optional[int] = None) -> Metadata:
         """

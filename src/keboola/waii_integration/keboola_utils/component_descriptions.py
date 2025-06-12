@@ -78,39 +78,37 @@ class ComponentDescriptionManager:
             LOG.info("Fetching component list from API")
             components = self._get_components_from_api(self._token, self._base_url)
             
-            # Create a mapping of component ID to description
             component_map = {}
             for component in components:
                 component_id = component.get('id')
                 if not component_id:
                     continue
                 
-                # Try to get the best available description in order of preference:
-                # 1. long_description (most detailed)
-                # 2. description (shorter summary)
-                # 3. documentation (if available)
-                # 4. name (fallback)
-                # 5. component ID (last resort)
-                description = (
-                    component.get('longDescription') or 
-                    component.get('description') or 
-                    component.get('documentation') or 
-                    component.get('name') or 
-                    f"Component {component_id}"
-                )
+                long_desc = component.get('longDescription', '').strip()
+                desc = component.get('description', '').strip()
+                doc = component.get('documentation', '').strip()
+                name = component.get('name', '').strip()
                 
-                # Store additional metadata that might be useful
+                description = ''
+                if long_desc and long_desc != component_id:
+                    description = long_desc
+                elif desc and desc != component_id:
+                    description = desc
+                elif doc and doc != component_id:
+                    description = doc
+                elif name and name != component_id and len(name) > len(component_id):
+                    description = name
+                
+                # Store component information
                 component_map[component_id] = {
                     'description': description,
-                    'name': component.get('name', ''),
-                    'long_description': component.get('longDescription', ''),
+                    'name': name,
+                    'long_description': long_desc,
                     'documentation_url': component.get('documentationUrl', '')
                 }
                 
-                # Log warning if no meaningful description is available
-                if not any([component.get('description'), component.get('longDescription'), 
-                          component.get('documentation'), component.get('name')]):
-                    LOG.warning(f"Component {component_id} has no description, name or documentation available")
+                if not description:
+                    LOG.debug(f"Component {component_id} has no meaningful description available")
             
             LOG.info(f"Successfully fetched {len(component_map)} component descriptions")
             return component_map
@@ -120,7 +118,7 @@ class ComponentDescriptionManager:
             return {}
 
 
-    def get_description(self, component_id: str) -> str:
+    def get_description(self, component_id: str) -> str | None:
         """
         Get a human-readable description for a component based on its ID.
         Fetches the component list from the API on first call.
@@ -129,17 +127,17 @@ class ComponentDescriptionManager:
             component_id: The Keboola component ID
             
         Returns:
-            A human-readable description of the component or default message if not found
+            A human-readable description of the component or None if not found
         """
-        # Initialize cache if it's the first call
         if self._cache is None:
             self._cache = self._fetch_component_list()
         
         component_info = self._cache.get(component_id)
         if not component_info:
-            return f"Component {component_id} (no description available)"
+            return None
             
-        return component_info['description']
+        description = component_info['description']
+        return description if description else None
 
     def get_full_component_info(self, component_id: str) -> dict:
         """
@@ -152,13 +150,17 @@ class ComponentDescriptionManager:
         Returns:
             A dictionary containing all available component information
         """
-        # Initialize cache if it's the first call
         if self._cache is None:
             self._cache = self._fetch_component_list()
             
-        return self._cache.get(component_id, {
-            'description': f"Component {component_id} (no description available)",
-            'name': '',
-            'long_description': '',
-            'documentation_url': ''
-        })
+        component_info = self._cache.get(component_id, {})
+        
+        if not component_info:
+            return {
+                'description': '',
+                'name': '',
+                'long_description': '',
+                'documentation_url': ''
+            }
+        
+        return component_info

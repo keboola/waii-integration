@@ -138,10 +138,3 @@ waii-integration/
 ├── .env                              # Environment configuration (gitignored)
 └── README.md                         # This file
 ```
-
-## Dependencies
-
-This project uses the following key dependencies (all managed through pyproject.toml):
-- `waii-sdk-py` - SDK for interacting with WAII API
-- `kbcstorage` - Client for Keboola Storage API
-- `requests` - HTTP library for API requests

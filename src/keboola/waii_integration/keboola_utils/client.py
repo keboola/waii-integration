@@ -14,7 +14,7 @@ class KeboolaClient:
         self.client = Client(api_url, token)
         logging.info("Initialized KeboolaClient with API URL: %s", api_url)
 
-    def extract_metadata(self, limit: Optional[int] = None) -> Dict:
+    def extract_metadata_from_project(self, limit: Optional[int] = None) -> Dict:
         """
         Extract metadata from Keboola project.
         

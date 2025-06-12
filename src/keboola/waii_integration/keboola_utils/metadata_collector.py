@@ -234,7 +234,7 @@ class KeboolaMetadataCollector:
         Returns:
             Metadata: Pydantic model containing metadata for tables
         """
-        raw_metadata: dict[str, Any] = self.client.extract_metadata(limit=limit)
+        raw_metadata: dict[str, Any] = self.client.extract_metadata_from_project(limit=limit)
         metadata = Metadata()
 
         # Process each bucket's tables

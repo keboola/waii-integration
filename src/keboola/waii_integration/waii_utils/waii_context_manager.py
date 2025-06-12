@@ -159,7 +159,8 @@ class WaiiSemanticContextManager:
             display_name = table.display_name
             description = table.description
 
-            if description == 'NO_DATA_AVAILABLE':
+            # Check if description is meaningful (not empty, not just whitespace, not NO_DATA_AVAILABLE)
+            if description == 'NO_DATA_AVAILABLE' or not description or not description.strip():
                 statement_parts.append(f"Table '{display_name}' contains {table.rows_count} rows.")
             else:
                 statement_parts.append(f"Table '{display_name}' has this description: {description}.")
@@ -258,7 +259,7 @@ class WaiiSemanticContextManager:
             
             # Generate filename with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = os.path.join(target_dir, filename_pattern.format(timestamp))
+            filename = str(Path(target_dir) / filename_pattern.format(timestamp))
             
             with open(filename, 'w') as f:
                 json.dump(data, f, indent=2)

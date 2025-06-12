@@ -139,10 +139,9 @@ class WaiiSemanticContextManager:
         The function creates two types of statements:
         1. A global statement about the entire dataset
         2. For each table, a comprehensive statement that includes:
-           - Basic description
+           - Basic description with row count
            - Component information (if available)
            - Data freshness information (if available)
-           - Row count information
         
         Args:
             tables: Dictionary of table metadata as Pydantic Table models
@@ -159,21 +158,22 @@ class WaiiSemanticContextManager:
             display_name = table.display_name
             description = table.description
 
-            # Check if description is meaningful (not empty, not just whitespace)
+            # Start with table description and row count
             if not description or not description.strip():
                 statement_parts.append(f"Table '{display_name}' contains {table.rows_count} rows.")
             else:
-                statement_parts.append(f"Table '{display_name}' has this description: {description}.")
+                statement_parts.append(f"Table '{display_name}' has this description: {description}. It contains {table.rows_count} rows.")
             
             # Component information if available
             comp_id = table.created_by_component['id']
             comp_description = table.created_by_component['description']
             if comp_id and comp_id.strip():
-                # Use component ID with description if both are available
+                # Simply check if we have a meaningful description
                 if comp_description and comp_description.strip():
+                    # Use component ID with description when available
                     statement_parts.append(f"It was created by {comp_id} ({comp_description}).")
                 else:
-                    # Use only component ID if description is not available
+                    # Use only component ID when no description is available
                     statement_parts.append(f"It was created by {comp_id}.")
             
             # Data freshness information if available
@@ -184,9 +184,6 @@ class WaiiSemanticContextManager:
                 freshness_info.append(f"last changed on {table.last_change_date}")
             if freshness_info:
                 statement_parts.append(f"Data is {', '.join(freshness_info)}.")
-            
-            # Row count information
-            statement_parts.append(f"The table contains {table.rows_count} rows of data.")
             
             # Combine all parts into one statement
             table_statement = SemanticStatement(

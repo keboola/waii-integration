@@ -159,16 +159,22 @@ class WaiiSemanticContextManager:
             display_name = table.display_name
             description = table.description
 
-            # Check if description is meaningful (not empty, not just whitespace, not NO_DATA_AVAILABLE)
-            if description == 'NO_DATA_AVAILABLE' or not description or not description.strip():
+            # Check if description is meaningful (not empty, not just whitespace)
+            if not description or not description.strip():
                 statement_parts.append(f"Table '{display_name}' contains {table.rows_count} rows.")
             else:
                 statement_parts.append(f"Table '{display_name}' has this description: {description}.")
             
             # Component information if available
             comp_id = table.created_by_component['id']
-            if comp_id != 'NO_DATA_AVAILABLE':
-                statement_parts.append(f"It was created by {comp_id} ({table.created_by_component['description']}).")
+            comp_description = table.created_by_component['description']
+            if comp_id and comp_id.strip():
+                # Use component ID with description if both are available
+                if comp_description and comp_description.strip():
+                    statement_parts.append(f"It was created by {comp_id} ({comp_description}).")
+                else:
+                    # Use only component ID if description is not available
+                    statement_parts.append(f"It was created by {comp_id}.")
             
             # Data freshness information if available
             freshness_info = []

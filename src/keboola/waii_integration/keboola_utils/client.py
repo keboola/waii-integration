@@ -56,17 +56,13 @@ class KeboolaClient:
                     )
         
                 table_id = table['id']
-                try:
-                    # Fetch detailed information for the current table
-                    raw_table_detail = self.client.tables.detail(table_id)
-                    # Convert to Pydantic model
-                    table_detail = Table(**raw_table_detail)
-                    table_details[table_id] = table_detail
-                    logging.info(f"Fetched details for table {table_id}")
-                    total_tables_processed += 1
-                except Exception as e:
-                    logging.error(f"Error fetching details for table {table_id}: {e}")
-                    continue
+                # Fetch detailed information for the current table
+                raw_table_detail = self.client.tables.detail(table_id)
+                # Convert to Pydantic model
+                table_detail = Table(**raw_table_detail)
+                table_details[table_id] = table_detail
+                logging.info(f"Fetched details for table {table_id}")
+                total_tables_processed += 1
 
         # Create and return the Pydantic model with all data
         return Metadata(

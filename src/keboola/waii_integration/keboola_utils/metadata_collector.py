@@ -12,7 +12,7 @@ import json
 from keboola.waii_integration.keboola_utils.client import KeboolaClient
 from keboola.waii_integration.keboola_utils.component_descriptions import ComponentDescriptionManager
 from keboola.waii_integration.models import (
-    TableMetadataKeys, ComponentInfo, Bucket, Table, Metadata
+    TableMetadataKey, ComponentInfo, Bucket, Table, Metadata
 )
 from datetime import datetime
 
@@ -42,7 +42,7 @@ class KeboolaMetadataCollector:
             metadata = table_data.get('metadata', [])
 
             component_id = next(
-                (m['value'] for m in metadata if m['key'] == TableMetadataKeys.CREATED_BY_COMPONENT_ID),
+                (m['value'] for m in metadata if m['key'] == TableMetadataKey.CREATED_BY_COMPONENT_ID),
                 None
             )
             if not component_id:

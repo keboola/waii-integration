@@ -5,13 +5,15 @@ Contains all data models used across the application.
 
 import logging
 from datetime import datetime
+from enum import Enum, unique
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 LOG = logging.getLogger(__name__)
 
 
-class TableMetadataKeys:
-    """Table metadata keys used in Keboola."""
+@unique
+class TableMetadataKey(str, Enum):
+    """Metadata keys for tables."""
     NAME = 'KBC.name'
     DESCRIPTION = 'KBC.description'
     CREATED_BY_COMPONENT_ID = 'KBC.createdBy.component.id'
@@ -85,9 +87,9 @@ class Table(BaseModel):
             return self
             
         for item in self.metadata:
-            if item['key'] == TableMetadataKeys.NAME and not self.name:
+            if item['key'] == TableMetadataKey.NAME and not self.name:
                 self.name = item['value']
-            elif item['key'] == TableMetadataKeys.DESCRIPTION and not self.description:
+            elif item['key'] == TableMetadataKey.DESCRIPTION and not self.description:
                 self.description = item['value']
         return self
 

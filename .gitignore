@@ -178,3 +178,4 @@ cython_debug/
 # Custom
 .vscode
 data/
+old_code/

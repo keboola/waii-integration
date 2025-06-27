@@ -76,7 +76,7 @@ class ComponentDescriptionManager:
         
         try:
             LOG.info("Fetching component list from API")
-            components = self._get_components_from_api(self._token, self._base_url)
+            components = self._get_components_from_api(self._base_url)
             
             component_map = {}
             for component in components:

@@ -1,10 +1,11 @@
 """Client for interacting with the Keboola Storage API."""
 
 import logging
-from typing import Dict, Optional
 from kbcstorage.client import Client
+from keboola.waii_integration.models import Bucket, Table, Metadata
 
 LOG = logging.getLogger(__name__)
+
 
 class KeboolaClient:
     """Client for interacting with the Keboola Storage API."""
@@ -14,43 +15,62 @@ class KeboolaClient:
         self.client = Client(api_url, token)
         logging.info("Initialized KeboolaClient with API URL: %s", api_url)
 
-    def extract_metadata_from_project(self, limit: Optional[int] = None) -> Dict:
+    def extract_metadata_from_project(self, limit: int | None = None) -> Metadata:
         """
         Extract metadata from Keboola project.
         
         Args:
             limit: Maximum total number of tables to fetch across all buckets (all tables if None)
             
-        Returns:
-            Dictionary containing buckets, tables and their metadata
+                    Returns:
+            Metadata: Pydantic model containing buckets, tables and their metadata
         """
         logging.info("Starting metadata extraction (limit=%s)", limit)
 
-        buckets = self.client.buckets.list()
-        result = {
-            'buckets': buckets,
-            'tables': {},
-            'table_details': {}
-        }
+        # Fetch and convert buckets to Pydantic models
+        raw_buckets = self.client.buckets.list()
+        buckets = [Bucket(**bucket) for bucket in raw_buckets]
+        
+        tables = dict()
+        table_details = dict()
         total_tables_processed = 0
-        for bucket in buckets:
+        
+        # Process each bucket to extract tables and their details
+        for bucket in raw_buckets:
             bucket_id = bucket['id']
-            tables = self.client.buckets.list_tables(bucket_id)
-            result['tables'][bucket_id] = tables
+            raw_bucket_tables = self.client.buckets.list_tables(bucket_id)
             
-            for table in tables:
+            # Convert raw tables to Pydantic models
+            bucket_tables = [Table(**table) for table in raw_bucket_tables]
+            tables[bucket_id] = bucket_tables
+            
+            # Process each table in the current bucket
+            for table in raw_bucket_tables:
+                # Check limit before processing each table
                 if limit is not None and total_tables_processed >= limit:
-                    logging.info(f"Reached total table limit ({limit}). Stopping metadata extraction.")
-                    return result
+                    logging.info(f"Reached total table limit ({limit}). Returning metadata.")
+                    return Metadata(
+                        buckets=buckets,
+                        tables=tables,
+                        table_details=table_details
+                    )
         
                 table_id = table['id']
                 try:
-                    table_detail = self.client.tables.detail(table_id)
-                    result['table_details'][table_id] = table_detail
+                    # Fetch detailed information for the current table
+                    raw_table_detail = self.client.tables.detail(table_id)
+                    # Convert to Pydantic model
+                    table_detail = Table(**raw_table_detail)
+                    table_details[table_id] = table_detail
                     logging.info(f"Fetched details for table {table_id}")
                     total_tables_processed += 1
                 except Exception as e:
                     logging.error(f"Error fetching details for table {table_id}: {e}")
                     continue
 
-        return result
+        # Create and return the Pydantic model with all data
+        return Metadata(
+            buckets=buckets,
+            tables=tables,
+            table_details=table_details
+        )

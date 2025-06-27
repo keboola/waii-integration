@@ -8,99 +8,15 @@ import os
 from pathlib import Path
 import datetime
 import json
-from typing import Optional, Any
+
 from keboola.waii_integration.keboola_utils.client import KeboolaClient
 from keboola.waii_integration.keboola_utils.component_descriptions import ComponentDescriptionManager
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from keboola.waii_integration.models import (
+    TableMetadataKeys, ComponentInfo, Bucket, Table, Metadata
+)
 from datetime import datetime
 
 LOG = logging.getLogger(__name__)
-
-
-class TableMetadataKeys:
-    """Table metadata keys """
-    NAME = 'KBC.name'
-    DESCRIPTION = 'KBC.description'
-    CREATED_BY_COMPONENT_ID = 'KBC.createdBy.component.id'
-
-
-class ComponentInfo(BaseModel):
-    """
-    Model for component information.
-    Matches the structure returned by ComponentDescriptionManager.get_full_component_info()
-    """
-    id: str
-    description: str
-    name: str
-    long_description: str = Field(alias="longDescription")
-    documentation_url: str = Field(alias="documentationUrl")
-
-    model_config = ConfigDict(
-        populate_by_name=True,
-        extra='ignore',  # Ignore extra fields from API
-        arbitrary_types_allowed=True
-    )
-
-    def __getitem__(self, key: str) -> Any:
-        """Support dictionary-style access"""
-        try:
-            return getattr(self, key)
-        except AttributeError:
-            field_definitions = self.model_fields
-            for field_name, field in field_definitions.items():
-                if field.alias == key:
-                    return getattr(self, field_name)
-            raise KeyError(key)
-
-
-class Bucket(BaseModel):
-    """Represents a Keboola bucket."""
-    id: str
-    stage: Optional[str] = None
-
-
-class Table(BaseModel):
-    """Represents a Keboola table with its metadata."""
-    id: str = Field()
-    name: str = Field(default="")
-    description: str = Field(default="")
-    display_name: str = Field(alias="displayName")
-    last_import_date: Optional[datetime] = Field(None, alias="lastImportDate")
-    last_change_date: Optional[datetime] = Field(None, alias="lastChangeDate")
-    created_by_component: ComponentInfo = Field()
-    columns: list[str] = Field(default_factory=list)
-    bucket: Bucket = Field()
-    rows_count: int = Field(0, alias="rowsCount")
-    metadata: list[dict[str, str]] = Field()
-
-    model_config = ConfigDict(
-        populate_by_name=True,
-        extra='ignore'
-    )
-
-    @model_validator(mode='after')
-    def extract_metadata_fields(self) -> 'Table':
-        """Extract name and description from metadata if not already set"""
-        if not self.metadata:
-            return self
-            
-        for item in self.metadata:
-            if item['key'] == TableMetadataKeys.NAME and not self.name:
-                self.name = item['value']
-            elif item['key'] == TableMetadataKeys.DESCRIPTION and not self.description:
-                self.description = item['value']
-        return self
-
-
-class Metadata(BaseModel):
-    """Represents the metadata extracted from Keboola."""
-    tables: dict[str, Table] = Field(default_factory=dict)
-
-    model_config = ConfigDict(
-        json_encoders={
-            datetime: lambda v: v.isoformat() if v else None
-        }
-    )
 
 
 class KeboolaMetadataCollector:
@@ -110,7 +26,7 @@ class KeboolaMetadataCollector:
         self.client = KeboolaClient(api_token, self.base_url)
         self.component_manager = ComponentDescriptionManager()
 
-    def _process_table_data(self, table_id: str, table_data: dict, bucket_id: str) -> Optional[Table]:
+    def _process_table_data(self, table_id: str, table_data: dict, bucket_id: str) -> Table | None:
         """
         Process raw table data into a Table model.
         
@@ -119,7 +35,7 @@ class KeboolaMetadataCollector:
             table_data: Raw table data from API
             bucket_id: The ID of the bucket containing the table
             
-        Returns:
+                    Returns:
             Table model if successful, None if required data is missing
         """
         try:
@@ -135,32 +51,32 @@ class KeboolaMetadataCollector:
 
             # Get component info and add ID
             component_data = self.component_manager.get_full_component_info(component_id)
-            component_data['id'] = component_id
+            component_info = ComponentInfo(id=component_id, **component_data)
 
             # Create table model with all data at once
             return Table(
                 id=table_id,
-                display_name=table_data.get('displayName', table_id),
-                last_import_date=table_data.get('lastImportDate'),
-                last_change_date=table_data.get('lastChangeDate'),
-                created_by_component=component_data,
+                displayName=table_data.get('displayName', table_id),
+                lastImportDate=table_data.get('lastImportDate'),
+                lastChangeDate=table_data.get('lastChangeDate'),
+                created_by_component=component_info,
                 columns=table_data.get('columns', []),
                 bucket=Bucket(
                     id=bucket_id,
                     stage=table_data.get('bucket', {}).get('stage')
                 ),
-                rows_count=table_data.get('rowsCount', 0),
+                rowsCount=table_data.get('rowsCount', 0),
                 metadata=metadata
             )
         except Exception as e:
             LOG.error(f"Error processing table data for {table_id}: {e}")
             return None
 
-    def _save_metadata_to_file(self, metadata: Metadata) -> Optional[str]:
+    def _save_metadata_to_file(self, metadata: Metadata) -> str | None:
         """
         Save collected metadata to a file.
         
-        Args:
+                    Args:
             metadata: Metadata model containing table metadata
             
         Returns:
@@ -190,13 +106,13 @@ class KeboolaMetadataCollector:
                             'id': table.id,
                             'name': table.name,
                             'description': table.description,
-                            'display_name': table.display_name,
+                            'display_name': table.displayName,
                             'last_import_date': table.last_import_date.isoformat() if table.last_import_date else None,
                             'last_change_date': table.last_change_date.isoformat() if table.last_change_date else None,
-                            'created_by_component': table.created_by_component.model_dump(),
+                            'created_by_component': table.created_by_component.model_dump() if table.created_by_component else None,
                             'columns': table.columns,
-                            'bucket': table.bucket.model_dump(),
-                            'rows_count': table.rows_count,
+                            'bucket': table.bucket.model_dump() if hasattr(table.bucket, 'model_dump') else table.bucket,
+                            'rows_count': table.rowsCount,
                             'metadata': table.metadata
                         }
                         for table in tables
@@ -224,7 +140,7 @@ class KeboolaMetadataCollector:
             return None
 
 
-    def get_tables_metadata_sample(self, limit: Optional[int] = None) -> Metadata:
+    def get_tables_metadata_sample(self, limit: int | None = None) -> Metadata:
         """
         Fetch basic metadata for tables in the project.
         
@@ -234,17 +150,19 @@ class KeboolaMetadataCollector:
         Returns:
             Metadata: Pydantic model containing metadata for tables
         """
-        raw_metadata: dict[str, Any] = self.client.extract_metadata_from_project(limit=limit)
-        metadata = Metadata()
+        raw_metadata = self.client.extract_metadata_from_project(limit=limit)
+        metadata = Metadata(tables={})
 
         # Process each bucket's tables
-        for bucket_id, tables in raw_metadata.get('tables', {}).items():
+        for bucket_id, tables in raw_metadata.tables.items():
             for table in tables:
-                table_id = table.get('id', 'unknown')
-                if table_id not in raw_metadata.get('table_details', {}):
+                table_id = table.id
+                if table_id not in raw_metadata.table_details:
                     continue
                 
-                table_data = raw_metadata.get('table_details', {}).get(table_id, {})
+                table_detail = raw_metadata.table_details[table_id]
+                # Convert Pydantic model to dict for processing
+                table_data = table_detail.model_dump()
                 if table_model := self._process_table_data(table_id, table_data, bucket_id):
                     metadata.tables[table_id] = table_model
         

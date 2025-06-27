@@ -8,7 +8,7 @@ import json
 import datetime
 from typing import Dict
 from pathlib import Path
-from keboola.waii_integration.keboola_utils.metadata_collector import Table
+from keboola.waii_integration.models import Table
 
 # Import WAII SDK
 from waii_sdk_py import WAII
@@ -155,26 +155,27 @@ class WaiiSemanticContextManager:
         # Add statements for each table
         for table_id, table in tables.items():
             statement_parts = []
-            display_name = table.display_name
+            display_name = table.displayName or table.name or table_id
             description = table.description
 
             # Start with table description and row count
             if not description or not description.strip():
-                statement_parts.append(f"Table '{display_name}' contains {table.rows_count} rows.")
+                statement_parts.append(f"Table '{display_name}' contains {table.rowsCount or 0} rows.")
             else:
-                statement_parts.append(f"Table '{display_name}' has this description: {description}. It contains {table.rows_count} rows.")
+                statement_parts.append(f"Table '{display_name}' has this description: {description}. It contains {table.rowsCount or 0} rows.")
             
-            # Component information if available
-            comp_id = table.created_by_component['id']
-            comp_description = table.created_by_component['description']
-            if comp_id and comp_id.strip():
-                # Simply check if we have a meaningful description
-                if comp_description and comp_description.strip():
-                    # Use component ID with description when available
-                    statement_parts.append(f"It was created by {comp_id} ({comp_description}).")
-                else:
-                    # Use only component ID when no description is available
-                    statement_parts.append(f"It was created by {comp_id}.")
+            # Component information if available (only if component exists)
+            if table.created_by_component:
+                comp_id = table.created_by_component.id
+                comp_description = table.created_by_component.description
+                if comp_id and comp_id.strip():
+                    # Simply check if we have a meaningful description
+                    if comp_description and comp_description.strip():
+                        # Use component ID with description when available
+                        statement_parts.append(f"It was created by {comp_id} ({comp_description}).")
+                    else:
+                        # Use only component ID when no description is available
+                        statement_parts.append(f"It was created by {comp_id}.")
             
             # Data freshness information if available
             freshness_info = []

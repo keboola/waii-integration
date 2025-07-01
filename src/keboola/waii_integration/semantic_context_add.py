@@ -36,7 +36,13 @@ def main():
     LOG.info(f"Ensuring output directory exists: {out_dir}")
     
     # Get settings from environment variables
-    required_vars = ['KEBOOLA_API_TOKEN', 'KEBOOLA_PROJECT_URL']
+    required_vars = [
+        'KEBOOLA_API_TOKEN',
+        'KEBOOLA_PROJECT_URL',
+        'WAII_API_URL',
+        'WAII_API_KEY',
+        'WAII_CONNECTION'
+    ]
     missing_vars = [var for var in required_vars if os.getenv(var) is None]
     if missing_vars:
         LOG.error(f"Missing environment variables: {', '.join(missing_vars)}")
@@ -49,6 +55,13 @@ def main():
     # Get API credentials from environment
     api_token = os.getenv('KEBOOLA_API_TOKEN')
     project_url = os.getenv('KEBOOLA_PROJECT_URL')
+    
+    # Get WAII credentials from environment
+    waii_api_url = os.getenv('WAII_API_URL')
+    waii_api_key = os.getenv('WAII_API_KEY')
+    waii_connection = os.getenv('WAII_CONNECTION')
+    waii_db_database = os.getenv('WAII_DB_DATABASE')
+    waii_db_username = os.getenv('WAII_DB_USERNAME') 
 
     LOG.info(f"Using project: {project_name}")
 
@@ -62,7 +75,15 @@ def main():
         table_count = len(metadata.tables)
         LOG.info(f"Adding metadata for {table_count} tables to WAII")
         try:
-            waii_manager = WaiiSemanticContextManager(statement_ids_path=args.out_dir)
+            waii_manager = WaiiSemanticContextManager(
+                api_url=waii_api_url,
+                api_key=waii_api_key,
+                connection_name=waii_connection,
+                project_name=project_name,
+                statement_ids_path=args.out_dir,
+                db_database=waii_db_database,
+                db_username=waii_db_username
+            )
             statements = waii_manager.create_semantic_context_statements(metadata.tables)
             waii_manager.add_to_semantic_context(statements)
 

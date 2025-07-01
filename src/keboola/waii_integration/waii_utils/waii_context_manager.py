@@ -3,7 +3,6 @@ WAII semantic context manager for handling interactions with WAII semantic conte
 """
 
 import logging
-import os
 import json
 import datetime
 from typing import Dict
@@ -36,14 +35,37 @@ class WaiiSemanticContextManager:
     # Labels
     KB_PROJECT_LABEL = 'kb_project'
     
-    def __init__(self, statement_ids_path: str = STATEMENT_IDS_DIR):
+    def __init__(
+        self, 
+        api_url: str,
+        api_key: str,
+        connection_name: str,
+        project_name: str = 'unknown',
+        statement_ids_path: str = STATEMENT_IDS_DIR,
+        db_database: str = None,
+        db_username: str = None
+    ):
         """Initialize the WAII semantic context manager
         
         Args:
+            api_url: WAII API URL
+            api_key: WAII API key
+            connection_name: WAII connection name
+            project_name: Human-readable project name for saved files (default: 'unknown')
             statement_ids_path: Path where statement IDs will be saved, relative to data/ directory (default: 'statement_ids')
+            db_database: Optional database name for fallback connection search
+            db_username: Optional username for fallback connection search
         """
-        self._setup_environment()
+        self._api_url = api_url
+        self._api_key = api_key
+        self._connection_name = connection_name
+        self._project_name = project_name
+        self._db_database = db_database
+        self._db_username = db_username
+        
+        self._validate_required_parameters()
         self._initialize_connection()
+        
         self.statement_ids = []  # Store statement IDs for later removal
         self.statement_ids_path = statement_ids_path
 
@@ -61,41 +83,39 @@ class WaiiSemanticContextManager:
         data_dir.mkdir(parents=True, exist_ok=True)
         return str(data_dir)
 
-    def _setup_environment(self) -> None:
-        """Set up WAII environment variables and validate required ones are present.
+    def _validate_required_parameters(self) -> None:
+        """Validate that required parameters are provided.
 
         Raises:
-            ValueError: If one or more required environment variables are missing.
+            ValueError: If one or more required parameters are missing.
         """
-        required_vars = [
-            'WAII_API_URL',
-            'WAII_API_KEY',
-            'WAII_CONNECTION'
-        ]
+        required_params = {
+            'api_url': self._api_url,
+            'api_key': self._api_key,
+            'connection_name': self._connection_name
+        }
 
-        missing_vars = [var for var in required_vars if os.getenv(var) is None]
-        if missing_vars:
-            raise ValueError(f"Missing WAII environment variables: {', '.join(missing_vars)}")
+        missing_params = [name for name, value in required_params.items() if not value]
+        if missing_params:
+            raise ValueError(f"Missing required WAII parameters: {', '.join(missing_params)}")
         
-        LOG.info("Environment variables validated successfully")
+        LOG.info("WAII parameters validated successfully")
 
     def _initialize_connection(self) -> None:
         """Initialize Waii SDK with API URL and key, and activate the connection."""
-        api_url = os.getenv('WAII_API_URL')
-        LOG.info('Initializing Waii with API URL: %s', api_url)
-        WAII.initialize(url=api_url, api_key=os.getenv('WAII_API_KEY'))
+        LOG.info('Initializing Waii with API URL: %s', self._api_url)
+        WAII.initialize(url=self._api_url, api_key=self._api_key)
 
-        waii_connection = os.getenv('WAII_CONNECTION')
-        LOG.info(f'Using connection from environment: {waii_connection}')
+        LOG.info(f'Using connection: {self._connection_name}')
         
         try:
-            # Try to use the connection from environment variable
-            LOG.info(f'Activating Waii connection: {waii_connection}')
-            WAII.Database.activate_connection(waii_connection)
+            # Try to use the connection from parameters
+            LOG.info(f'Activating Waii connection: {self._connection_name}')
+            WAII.Database.activate_connection(self._connection_name)
             LOG.info("Connection activated successfully")
         
         except Exception as e:
-            LOG.warning(f"Failed to activate connection from environment variable: {e}")
+            LOG.warning(f"Failed to activate connection from parameters: {e}")
             
             # Get all available connections and find one containing our workspace and database
             LOG.info("Looking for an alternative connection...")
@@ -114,21 +134,19 @@ class WaiiSemanticContextManager:
 
             LOG.info(f"Available connections: {connection_ids}")
 
-            # Look for a connection with our workspace and database
-            waii_db_database = os.getenv('WAII_DB_DATABASE')
-            waii_db_username = os.getenv('WAII_DB_USERNAME')
-            
-            for conn_id in connection_ids:
-                if waii_db_database in conn_id and waii_db_username in conn_id:
-                    waii_connection = conn_id
-                    LOG.info(f"Found matching connection: {waii_connection}")
-                    
-                    try:
-                        WAII.Database.activate_connection(waii_connection)
-                        LOG.info("Alternative connection activated successfully")
-                        return
-                    except Exception as alt_error:
-                        LOG.warning(f"Failed to activate alternative connection: {alt_error}")
+            # Look for a connection with our workspace and database (if provided)
+            if self._db_database and self._db_username:
+                for conn_id in connection_ids:
+                    if self._db_database in conn_id and self._db_username in conn_id:
+                        alternative_connection = conn_id
+                        LOG.info(f"Found matching connection: {alternative_connection}")
+                        
+                        try:
+                            WAII.Database.activate_connection(alternative_connection)
+                            LOG.info("Alternative connection activated successfully")
+                            return
+                        except Exception as alt_error:
+                            LOG.warning(f"Failed to activate alternative connection: {alt_error}")
             
             raise ValueError("Could not find or activate a connection with required workspace and database identifiers")
 
@@ -298,7 +316,7 @@ class WaiiSemanticContextManager:
         # Prepare the data to save
         data = {
             'timestamp': datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
-            'project': os.getenv('KEBOOLA_PROJECT_NAME', 'unknown'),
+            'project': self._project_name,
             'statement_count': len(statements),
             'statements': statements_data
         }
@@ -318,7 +336,7 @@ class WaiiSemanticContextManager:
         """
         data = {
             'timestamp': datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
-            'project': os.getenv('KEBOOLA_PROJECT_NAME', 'unknown'),
+            'project': self._project_name,
             'statement_count': len(statement_ids),
             'statement_ids': statement_ids
         }

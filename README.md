@@ -112,7 +112,7 @@ from waii_context_manager import WaiiSemanticContextManager
 
 # Initialize Keboola client and collector
 client = KeboolaClient(token, api_url)
-collector = KeboolaMetadataCollector(api_token, project_url)
+collector = KeboolaMetadataCollector(api_token, project_url, project_name)
 
 # Extract metadata from Keboola
 metadata = collector.get_tables_metadata_sample()

@@ -21,10 +21,21 @@ LOG = logging.getLogger(__name__)
 
 class KeboolaMetadataCollector:
     """Collects metadata from Keboola projects"""
-    def __init__(self, api_token: str, project_url: str):
+    
+    def __init__(self, api_token: str, project_url: str, project_name: str = 'unknown'):
+        """
+        Initialize the Keboola metadata collector.
+        
+        Args:
+            api_token: Keboola Storage API token
+            project_url: Full project URL (including /admin part)
+            project_name: Human-readable project name for metadata files (default: 'unknown')
+        """
         self.base_url = project_url.split('/admin')[0]
+        self.project_name = project_name
         self.client = KeboolaClient(api_token, self.base_url)
-        self.component_manager = ComponentDescriptionManager()
+        # Pass the api_token and base_url to ComponentDescriptionManager
+        self.component_manager = ComponentDescriptionManager(api_token, self.base_url)
 
     def _process_table_data(self, table_id: str, table_data: dict, bucket_id: str) -> Table | None:
         """
@@ -35,7 +46,7 @@ class KeboolaMetadataCollector:
             table_data: Raw table data from API
             bucket_id: The ID of the bucket containing the table
             
-                    Returns:
+        Returns:
             Table model if successful, None if required data is missing
         """
         try:
@@ -76,7 +87,7 @@ class KeboolaMetadataCollector:
         """
         Save collected metadata to a file.
         
-                    Args:
+        Args:
             metadata: Metadata model containing table metadata
             
         Returns:
@@ -122,9 +133,10 @@ class KeboolaMetadataCollector:
             }
             
             # Prepare the final JSON structure
+            # Use the project_name passed to the constructor instead of environment variable
             output_data = {
                 'timestamp': timestamp,
-                'project': os.getenv('KEBOOLA_PROJECT_NAME', 'unknown'),
+                'project': self.project_name,
                 'table_count': sum(len(tables) for tables in tables_by_bucket.values()),
                 'metadata': metadata_dict
             }
@@ -138,7 +150,6 @@ class KeboolaMetadataCollector:
         except Exception as e:
             LOG.error(f"Error saving metadata to file: {e}")
             return None
-
 
     def get_tables_metadata_sample(self, limit: int | None = None) -> Metadata:
         """

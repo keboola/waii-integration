@@ -6,18 +6,15 @@ Usage:
     from component_descriptions import ComponentDescriptionManager
     
     # Get a component description
-    manager = ComponentDescriptionManager()
+    manager = ComponentDescriptionManager(api_token, base_url)
     description = manager.get_description('component.id')
 """
 
-import os
 import logging
 import requests
 
-# Set up logging and initialize Keboola API configuration from environment
+# Set up logging
 LOG = logging.getLogger(__name__)
-KEBOOLA_API_TOKEN = os.getenv('KEBOOLA_API_TOKEN')
-KEBOOLA_BASE_URL = os.getenv('KEBOOLA_PROJECT_URL', '').split('/admin')[0]
 
 
 class ComponentDescriptionManager:
@@ -25,12 +22,17 @@ class ComponentDescriptionManager:
     Manages component descriptions from Keboola API
     """
 
-    def __init__(self):
-        """Initialize the component description manager"""
-        self._cache = None
+    def __init__(self, api_token: str, base_url: str):
+        """
+        Initialize the component description manager.
         
-        self._token = KEBOOLA_API_TOKEN
-        self._base_url = KEBOOLA_BASE_URL
+        Args:
+            api_token: Keboola Storage API token
+            base_url: Keboola base URL (without /admin suffix)
+        """
+        self._cache = None
+        self._token = api_token
+        self._base_url = base_url
         self._headers = {"X-StorageApi-Token": self._token} if self._token else {}
 
 
@@ -39,7 +41,6 @@ class ComponentDescriptionManager:
         Fetch components directly from the Keboola API endpoint.
         
         Args:
-            token: Keboola Storage API token
             base_url: Keboola base URL
             
         Returns:

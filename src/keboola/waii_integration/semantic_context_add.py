@@ -55,7 +55,7 @@ def main():
     try:
         # Step 1: Collect metadata from Keboola
         LOG.info("Collecting metadata from Keboola")
-        collector = KeboolaMetadataCollector(api_token, project_url)
+        collector = KeboolaMetadataCollector(api_token, project_url, project_name)
         metadata = collector.get_tables_metadata_sample(limit=limit)
 
         # Add to WAII semantic context

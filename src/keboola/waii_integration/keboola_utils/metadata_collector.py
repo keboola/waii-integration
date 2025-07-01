@@ -11,7 +11,7 @@ import json
 
 from keboola.waii_integration.keboola_utils.client import KeboolaClient
 from keboola.waii_integration.keboola_utils.component_descriptions import ComponentDescriptionManager
-from keboola.waii_integration.models import (
+from keboola.waii_integration.keboola_utils.models import (
     TableMetadataKey, ComponentInfo, Bucket, Table, Metadata
 )
 from datetime import datetime
@@ -34,7 +34,6 @@ class KeboolaMetadataCollector:
         self.base_url = project_url.split('/admin')[0]
         self.project_name = project_name
         self.client = KeboolaClient(api_token, self.base_url)
-        # Pass the api_token and base_url to ComponentDescriptionManager
         self.component_manager = ComponentDescriptionManager(api_token, self.base_url)
 
     def _process_table_data(self, table_id: str, table_data: dict, bucket_id: str) -> Table | None:
@@ -132,8 +131,6 @@ class KeboolaMetadataCollector:
                 }
             }
             
-            # Prepare the final JSON structure
-            # Use the project_name passed to the constructor instead of environment variable
             output_data = {
                 'timestamp': timestamp,
                 'project': self.project_name,
@@ -164,7 +161,6 @@ class KeboolaMetadataCollector:
         raw_metadata = self.client.extract_metadata_from_project(limit=limit)
         metadata = Metadata(tables={})
 
-        # Process each bucket's tables
         for bucket_id, tables in raw_metadata.tables.items():
             for table in tables:
                 table_id = table.id
@@ -172,7 +168,6 @@ class KeboolaMetadataCollector:
                     continue
                 
                 table_detail = raw_metadata.table_details[table_id]
-                # Convert Pydantic model to dict for processing
                 table_data = table_detail.model_dump()
                 if table_model := self._process_table_data(table_id, table_data, bucket_id):
                     metadata.tables[table_id] = table_model

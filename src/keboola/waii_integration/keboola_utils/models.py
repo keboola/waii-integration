@@ -32,7 +32,7 @@ class ComponentInfo(BaseModel):
 
     model_config = ConfigDict(
         populate_by_name=True,
-        extra='ignore',  # Ignore extra fields from API
+        extra='ignore',
         arbitrary_types_allowed=True
     )
 
@@ -72,11 +72,7 @@ class Table(BaseModel):
     rowsCount: int | None = Field(default=None, alias="rowsCount", description='Number of rows in the table')
     dataSizeBytes: int | None = Field(default=None, description='Size of the table data in bytes')
     columns: list[str] = Field(default_factory=list, description='List of column names')
-    
-    # Detailed bucket information
     bucket: dict | Bucket | None = Field(default=None, description='Bucket information')
-    
-    # Component and metadata information (optional for enriched tables)
     created_by_component: ComponentInfo | None = Field(default=None, description='Component that created this table')
     metadata: list[dict[str, str]] = Field(default_factory=list, description='Table metadata')
 
@@ -107,7 +103,6 @@ class Metadata(BaseModel):
         }
     )
     
-    # For client usage - project-level metadata
     buckets: list[Bucket] | None = Field(
         default=None,
         description='List of all buckets in the project'

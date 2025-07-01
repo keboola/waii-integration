@@ -7,7 +7,7 @@ import json
 import datetime
 from typing import Dict
 from pathlib import Path
-from keboola.waii_integration.models import Table
+from keboola.waii_integration.keboola_utils.models import Table
 
 # Import WAII SDK
 from waii_sdk_py import WAII
@@ -117,11 +117,8 @@ class WaiiSemanticContextManager:
         except Exception as e:
             LOG.warning(f"Failed to activate connection from parameters: {e}")
             
-            # Get all available connections and find one containing our workspace and database
             LOG.info("Looking for an alternative connection...")
             connections = WAII.Database.get_connections()
-            
-            # Extract connection IDs in a safe way
             connection_ids = []
             for conn in connections:
                 try:
@@ -134,7 +131,6 @@ class WaiiSemanticContextManager:
 
             LOG.info(f"Available connections: {connection_ids}")
 
-            # Look for a connection with our workspace and database (if provided)
             if self._db_database and self._db_username:
                 for conn_id in connection_ids:
                     if self._db_database in conn_id and self._db_username in conn_id:
@@ -187,12 +183,9 @@ class WaiiSemanticContextManager:
                 comp_id = table.created_by_component.id
                 comp_description = table.created_by_component.description
                 if comp_id and comp_id.strip():
-                    # Simply check if we have a meaningful description
                     if comp_description and comp_description.strip():
-                        # Use component ID with description when available
                         statement_parts.append(f"It was created by {comp_id} ({comp_description}).")
                     else:
-                        # Use only component ID when no description is available
                         statement_parts.append(f"It was created by {comp_id}.")
             
             # Data freshness information if available
@@ -241,8 +234,7 @@ class WaiiSemanticContextManager:
             saved_file = self._save_semantic_statements_to_file(statements)
             if saved_file:
                 LOG.info(f"Semantic statements saved to {saved_file}")
-            
-            # Update WAII semantic context
+
             resp: ModifySemanticContextResponse = SemanticContext.modify_semantic_context(
                 ModifySemanticContextRequest(updated=statements)
             )
@@ -252,7 +244,6 @@ class WaiiSemanticContextManager:
             if len(resp.updated) != len(statements):
                 LOG.warning(f"Not all statements were added: {len(resp.updated)}/{len(statements)}")
             
-            # Save statement IDs to a file for later reference
             self._save_statement_ids_to_file(statement_ids)
             
         except Exception as e:
@@ -303,7 +294,6 @@ class WaiiSemanticContextManager:
         Returns:
             str | None: Path to the saved file, or None if saving failed
         """
-        # Convert statements to a serializable format
         statements_data = []
         for stmt in statements:
             statements_data.append({
@@ -313,7 +303,6 @@ class WaiiSemanticContextManager:
                 'labels': stmt.labels
             })
         
-        # Prepare the data to save
         data = {
             'timestamp': datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
             'project': self._project_name,

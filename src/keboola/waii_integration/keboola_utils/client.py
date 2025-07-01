@@ -2,7 +2,7 @@
 
 import logging
 from kbcstorage.client import Client
-from keboola.waii_integration.models import Bucket, Table, Metadata
+from keboola.waii_integration.keboola_utils.models import Bucket, Table, Metadata
 
 LOG = logging.getLogger(__name__)
 
@@ -27,7 +27,6 @@ class KeboolaClient:
         """
         logging.info("Starting metadata extraction (limit=%s)", limit)
 
-        # Fetch and convert buckets to Pydantic models
         raw_buckets = self.client.buckets.list()
         buckets = [Bucket(**bucket) for bucket in raw_buckets]
         
@@ -46,7 +45,6 @@ class KeboolaClient:
             
             # Process each table in the current bucket
             for table in raw_bucket_tables:
-                # Check limit before processing each table
                 if limit is not None and total_tables_processed >= limit:
                     logging.info(f"Reached total table limit ({limit}). Returning metadata.")
                     return Metadata(
@@ -56,15 +54,12 @@ class KeboolaClient:
                     )
         
                 table_id = table['id']
-                # Fetch detailed information for the current table
                 raw_table_detail = self.client.tables.detail(table_id)
-                # Convert to Pydantic model
                 table_detail = Table(**raw_table_detail)
                 table_details[table_id] = table_detail
                 logging.info(f"Fetched details for table {table_id}")
                 total_tables_processed += 1
 
-        # Create and return the Pydantic model with all data
         return Metadata(
             buckets=buckets,
             tables=tables,

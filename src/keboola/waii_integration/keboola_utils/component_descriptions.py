@@ -36,18 +36,14 @@ class ComponentDescriptionManager:
         self._headers = {"X-StorageApi-Token": self._token} if self._token else {}
 
 
-    def _get_components_from_api(self, base_url: str) -> list[dict]:
+    def _get_components_from_api(self) -> list[dict]:
         """
         Fetch components directly from the Keboola API endpoint.
         
-        Args:
-            base_url: Keboola base URL
-            
         Returns:
             List of component dictionaries
         """
-        url = f"{base_url}/v2/storage"
-        
+        url = f"{self._base_url}/v2/storage"
         LOG.info(f"Fetching components from API endpoint: {url}")
         
         try:
@@ -77,7 +73,7 @@ class ComponentDescriptionManager:
         
         try:
             LOG.info("Fetching component list from API")
-            components = self._get_components_from_api(self._base_url)
+            components = self._get_components_from_api()
             
             component_map = {}
             for component in components:
